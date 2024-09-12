@@ -17,20 +17,20 @@ const double EPS       = 1e-4;
 typedef struct {
     int rows;
     int cols;
-    int *items;
+    bool *items;
 
 } Grid;
 
 int make_grid(Grid* grid, int rows, int cols) {
     grid->rows = rows;
     grid->cols = cols;
-    grid->items = malloc(sizeof(int)*rows*cols);
+    grid->items = malloc(sizeof(bool)*rows*cols);
     
     if (grid->items == NULL) {
         return -1;
     }
 
-    memset(grid->items, 0, sizeof(int)*rows*cols);
+    memset(grid->items, 0, sizeof(bool)*rows*cols);
 
     return 0;
 }
@@ -53,7 +53,7 @@ int main(void)
 {
     Grid g = {0};
     make_grid(&g, GRID_SIZE, GRID_SIZE); 
-
+    grid_at(g, 2, 2) = true;
     for (int i = 0; i < g.rows; i++){ 
         for (int j = 0; j < g.cols; j++) {
             printf("%d ", grid_at(g, i, j));
