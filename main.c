@@ -29,13 +29,7 @@ int make_grid(Grid* grid, int rows, int cols) {
     if (grid->items == NULL) {
         return -1;
     }
-    //for (int i = 0; i < rows; i++) 
-    //{
-    //    for (int j = 0; j < cols; j++)
-    //    {   
-    //        grid->items[i*cols + j] = 0;
-    //    }
-    //}
+
     memset(grid->items, 0, sizeof(int)*rows*cols);
 
     return 0;
@@ -45,24 +39,21 @@ void draw_grid(Grid grid)
 {
     int cell_size = WIDTH / GRID_SIZE;
        
-    for (int i = 0; i < GRID_SIZE; i++) {
-        Vector2 startPos = {.x = i*cell_size, .y = 0};
-        Vector2 endPos = {.x = i*cell_size, .y = HEIGHT};
-        DrawLineV(startPos, endPos,  RAYWHITE);
-        
-        startPos.x = 0; 
-        startPos.y = i*cell_size;
-
-        endPos.x = WIDTH;
-        endPos.y = i*cell_size;
-        DrawLineV(startPos, endPos, RAYWHITE);
+    DrawLineV((Vector2){.x = 0, .y = 1}, (Vector2){.x = WIDTH, .y = 1}, RAYWHITE);
+    DrawLineV((Vector2){.x = 1, .y = 0}, (Vector2){.x = 1, .y = HEIGHT}, RAYWHITE);
+    DrawLineV((Vector2){.x = WIDTH, .y = 0}, (Vector2){.x = WIDTH, .y = HEIGHT}, RAYWHITE);
+    for (int i = 1; i <= GRID_SIZE; i++) {
+        DrawLineV((Vector2){.x = i*cell_size, .y = 0}, (Vector2){.x = i*cell_size, .y = HEIGHT},  RAYWHITE);
+        DrawLineV((Vector2){.x = 0, .y = i*cell_size}, (Vector2){.x = WIDTH, .y = i*cell_size}, RAYWHITE);
     }
+
 }
 
 int main(void)
 {
     Grid g = {0};
     make_grid(&g, GRID_SIZE, GRID_SIZE); 
+
     for (int i = 0; i < g.rows; i++){ 
         for (int j = 0; j < g.cols; j++) {
             printf("%d ", grid_at(g, i, j));
