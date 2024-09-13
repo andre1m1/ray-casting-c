@@ -10,8 +10,8 @@
 #define WIDTH      800
 #define HEIGHT     800
 #define RADIUS     10.0f
-#define EPS        1e-4
-
+#define EPS        1e-6
+#define MAX_DIST   10
 
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
 
@@ -122,6 +122,23 @@ Vector2 cast_ray(Vector2 p1, Vector2 p2)
 
 }
 
+bool check_collision(Vector2 p, Vector2 dir, Grid grid)
+{
+    if (p.x < GRID_SIZE && p.y < GRID_SIZE) {
+        if (p.x == (int)p.x) {
+            if (dir.x == -1 && grid_at(grid, (int)p.x - 1, (int)floorf(p.y)) != 0) return 1;
+            else if (dir.x == 1 && grid_at(grid, (int)p.x, (int)floorf(p.y)) != 0) return 1;
+        }
+        else {
+            if (dir.y == -1 && grid_at(grid, (int)floorf(p.x), (int)p.y - 1) != 0) return 1;
+            else if (dir.y == 1 && grid_at(grid, (int)floorf(p.x), (int)p.y) != 0) return 1;
+        }
+
+    }
+    return 0;
+
+}
+
 
 int main(void)
 {
@@ -141,14 +158,36 @@ int main(void)
     SetTargetFPS(FPS); 
     while(!WindowShouldClose()) 
     {
-        Vector2 mouse_pos = world_to_grid(GetMousePosition());
-        Vector2 p = {1,1};
+        Vector2 p1 = {1,1};
+        Vector2 p2 = world_to_grid(GetMousePosition());
         BeginDrawing();
             ClearBackground(BLACK);
             draw_grid(g);
-            draw_line(p, mouse_pos);
-            draw_point(p);
-            draw_point(mouse_pos);
+            draw_line(p1, p2);
+            draw_point(p1);
+            draw_point(p2);
+                
+            
+            while(Vector2DistanceSqr(p1, p2) < MAX_DIST*MAX_DIST)
+            {
+                draw_line(p1, p2);
+                Vector2 p3 = cast_ray(p1, p2);
+                Vector2 eps = Vector2Subtract(p2, p1);
+                
+                eps.x = eps.x / fabsf(eps.x) * EPS;
+                eps.y = eps.y / fabsf(eps.y) * EPS;
+                
+                if (check_collision(p3, eps, g)) {
+                    draw_line(p2, p3);
+                    draw_point((Vector2){6,6});
+                    draw_point(p3);
+                    break;
+                }
+                    
+                p1 = p2;
+                p2 = Vector2Add(p3, eps);
+                draw_point(p3);
+            }
 
         EndDrawing();
     }
