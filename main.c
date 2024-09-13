@@ -3,16 +3,16 @@
 #include <stdlib.h>
 #include "raylib/raylib.h"
 
+
+#define GRID_SIZE  8
+#define FPS        60
+#define WIDTH      800
+#define HEIGHT     800
+#define RADIUS     10
+#define EPS        1e-4
+
+
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
-
-const int WIDTH     = 800;
-const int HEIGHT    = 800;
-const int FPS       = 60;
-
-const int    GRID_SIZE = 8;
-const int    RADIUS    = 10;
-const double EPS       = 1e-4;
-
 
 typedef struct {
     int rows;
