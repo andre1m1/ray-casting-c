@@ -10,7 +10,7 @@
 #define WIDTH      800
 #define HEIGHT     800
 #define RADIUS     10.0f
-#define EPS        1e-6
+#define EPS        1e-4
 #define MAX_DIST   10
 
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
@@ -174,18 +174,17 @@ int main(void)
                 Vector2 p3 = cast_ray(p1, p2);
                 Vector2 eps = Vector2Subtract(p2, p1);
                 
-                eps.x = eps.x / fabsf(eps.x) * EPS;
-                eps.y = eps.y / fabsf(eps.y) * EPS;
-                
+                eps.x /= fabsf(eps.x);
+                eps.y /= fabsf(eps.y);
+
                 if (check_collision(p3, eps, g)) {
                     draw_line(p2, p3);
-                    draw_point((Vector2){6,6});
                     draw_point(p3);
                     break;
                 }
                     
                 p1 = p2;
-                p2 = Vector2Add(p3, eps);
+                p2 = Vector2Add(p3,Vector2Scale(eps, EPS));
                 draw_point(p3);
             }
 
