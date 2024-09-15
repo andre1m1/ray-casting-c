@@ -76,10 +76,10 @@ void draw_line(Vector2 p1, Vector2 p2)
     DrawLineV(p1w, p2w, RED);
 }
 
-void draw_point(Vector2 p)
+void draw_point(Vector2 p, Color color)
 {
     Vector2 pw = grid_to_world(p);
-    DrawCircleV(pw, RADIUS, RED);
+    DrawCircleV(pw, RADIUS, color);
 }
 
 Vector2 get_line_eq(Vector2 p1, Vector2 p2)
@@ -96,7 +96,6 @@ Vector2 get_line_eq(Vector2 p1, Vector2 p2)
 Vector2 cast_ray(Vector2 p1, Vector2 p2)
 {
     Vector2 line_eq = get_line_eq(p1, p2);
-    Vector2 diff = Vector2Subtract(p2, p1);
     float m = line_eq.x;
     float n = line_eq.y;
     
@@ -105,15 +104,15 @@ Vector2 cast_ray(Vector2 p1, Vector2 p2)
 
     // Find closest X axis collision
     if (m) {
-        if (diff.y > 0) dx = (Vector2){.x = (ceil(p2.y) - n) / m, .y = ceil(p2.y)};
+        if (p2.y > p1.y) dx = (Vector2){.x = (ceil(p2.y) - n) / m, .y = ceil(p2.y)};
         else dx = (Vector2){.x = (floorf(p2.y) - n) / m, .y = floorf(p2.y)};
     } else dx = (Vector2){.x = 0, .y = n};
 
     // Find Y axis collision
-    if (diff.x > 0) dy = (Vector2){.x = ceil(p2.x), .y = m * ceil(p2.x) + n};
-    else if (diff.x < 0) dy = (Vector2){.x = floorf(p2.x), .y = m * floorf(p2.x) + n};
+    if (p2.x > p1.x) dy = (Vector2){.x = ceil(p2.x), .y = m * ceil(p2.x) + n};
+    else if (p2.x < p1.x) dy = (Vector2){.x = floorf(p2.x), .y = m * floorf(p2.x) + n};
     else {
-        if (diff.y > 0) dy = (Vector2){.x = p2.x, .y = ceil(p2.y)};
+        if (p2.y > p1.y) dy = (Vector2){.x = p2.x, .y = ceil(p2.y)};
         else dy = (Vector2){.x = p2.x, .y = floorf(p2.x)};
     }
     
@@ -139,12 +138,36 @@ bool check_collision(Vector2 p, Vector2 dir, Grid grid)
 
 }
 
+void step_ray(Vector2 p1, Vector2 p2, Grid g)
+{
+    while(Vector2DistanceSqr(p1, p2) < MAX_DIST*MAX_DIST)
+    {
+        draw_line(p1, p2);
+        Vector2 p3 = cast_ray(p1, p2);
+        Vector2 eps = Vector2Subtract(p2, p1);
+        
+        eps.x /= fabsf(eps.x);
+        eps.y /= fabsf(eps.y);
+
+        if (check_collision(p3, eps, g)) {
+            draw_line(p2, p3);
+            draw_point(p3, RED);
+            break;
+        }
+            
+        p1 = p2;
+        p2 = Vector2Add(p3,Vector2Scale(eps, EPS));
+        draw_point(p3, RED);
+    }
+}
+
 
 int main(void)
 {
     Grid g = {0};
     make_grid(&g, GRID_SIZE, GRID_SIZE); 
     grid_at(g, 2, 2) = 1;
+    grid_at(g, 1, 2) = 1;
 
     for (int i = 0; i < g.rows; i++){ 
         for (int j = 0; j < g.cols; j++) {
@@ -156,38 +179,39 @@ int main(void)
 
     InitWindow(WIDTH, HEIGHT, "Hello Raylib");
     SetTargetFPS(FPS); 
+    Vector2 plane = {0, 0.66};
+    Vector2 dir = {-1, 0};
+    Vector2 pos = {2, 3.141};
+    BeginDrawing();
+
     while(!WindowShouldClose()) 
     {
-        Vector2 p1 = {1,1};
-        Vector2 p2 = world_to_grid(GetMousePosition());
-        BeginDrawing();
             ClearBackground(BLACK);
             draw_grid(g);
-            draw_line(p1, p2);
-            draw_point(p1);
-            draw_point(p2);
-                
-            
-            while(Vector2DistanceSqr(p1, p2) < MAX_DIST*MAX_DIST)
+            draw_point(pos, RED);
+            //step_ray(pos, dir, g);
+            draw_line(pos, Vector2Add(pos, dir));
+            draw_point(Vector2Add(pos, dir), BLUE); 
+            draw_point(Vector2Add(Vector2Add(pos, plane), dir),BLUE);
+            draw_point(Vector2Add(dir, Vector2Subtract(pos, plane)),BLUE);
+
+            if (IsKeyPressed(KEY_D))
             {
-                draw_line(p1, p2);
-                Vector2 p3 = cast_ray(p1, p2);
-                Vector2 eps = Vector2Subtract(p2, p1);
                 
-                eps.x /= fabsf(eps.x);
-                eps.y /= fabsf(eps.y);
+                float x = dir.x;
 
-                if (check_collision(p3, eps, g)) {
-                    draw_line(p2, p3);
-                    draw_point(p3);
-                    break;
-                }
-                    
-                p1 = p2;
-                p2 = Vector2Add(p3,Vector2Scale(eps, EPS));
-                draw_point(p3);
+                dir.x = -dir.y;
+                dir.y = x;
+
+                x = plane.x;
+                plane.x = -plane.y;
+                plane.y = x;
             }
-
+            else if (IsKeyPressed(KEY_W))
+            {
+                pos = Vector2Add(pos, Vector2Scale(dir, 0.5));
+            
+            }
         EndDrawing();
     }
 
