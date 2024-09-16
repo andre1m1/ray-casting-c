@@ -139,6 +139,14 @@ bool check_collision(Vector2 p, Vector2 dir, Grid grid)
 
 }
 
+Vector2 get_plane(Vector2 dir)
+{
+    cos_45 = cos(PI/4.0f);
+    float x = cos_45 * dir.x - cos_45 * dir.y;
+    float y = cos_45 * dir.x + cos_45 * dir.y;
+    return (Vector2) {x, y};
+}
+
 
 int main(void)
 {
@@ -161,6 +169,7 @@ int main(void)
     // TODO: Fix bug where direction cannot be zero anymore
     Vector2 dir = {-EPS * 100, EPS * 100};
     Vector2 pos = {4, 5.6};
+    Vector2 plane = get_plane(dir);
 
     while(!WindowShouldClose()) 
     {
@@ -194,6 +203,8 @@ int main(void)
                 
                 start = next;
             }
+            draw_line(pos, Vector2Add(plane, Vector2Add(dir,pos)));
+            draw_line(pos, Vector2Subtract(Vector2Add(dir,pos), plane));
 
         EndDrawing();
     }
