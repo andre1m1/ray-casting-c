@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include "raylib/raylib.h"
 #include "raylib/raymath.h"
-#include "math.h"
 
 #define GRID_SIZE  8
 #define FPS        60
@@ -84,7 +84,7 @@ void draw_point(Vector2 p, Color color)
 
 Vector2 get_line_eq(Vector2 p1, Vector2 p2)
 {
-    float m = 0.0;
+    float m = 0.0f;
     if (p1.x != p2.x) m = (p2.y - p1.y) / (p2.x - p1.x);
     
     float n = p2.y - m * p2.x;
@@ -93,8 +93,8 @@ Vector2 get_line_eq(Vector2 p1, Vector2 p2)
 }
 
 // TODO: Refactor the way collisions are computed
-Vector2 cast_ray(Vector2 p1, Vector2 p2)
-{
+Vector2 step_ray(Vector2 p1, Vector2 p2)
+{   
     Vector2 line_eq = get_line_eq(p1, p2);
     float m = line_eq.x;
     float n = line_eq.y;
@@ -123,42 +123,20 @@ Vector2 cast_ray(Vector2 p1, Vector2 p2)
 
 bool check_collision(Vector2 p, Vector2 dir, Grid grid)
 {
+
     if (p.x < GRID_SIZE && p.y < GRID_SIZE) {
         if (p.x == (int)p.x) {
-            if (dir.x == -1 && grid_at(grid, (int)p.x - 1, (int)floorf(p.y)) != 0) return 1;
-            else if (dir.x == 1 && grid_at(grid, (int)p.x, (int)floorf(p.y)) != 0) return 1;
+            if (dir.y > 0 && grid_at(grid, (int)p.x - 1, (int)floorf(p.y)) != 0) return 1;
+            else if (dir.y < 0 && grid_at(grid, (int)p.x, (int)floorf(p.y)) != 0) return 1;
         }
         else {
-            if (dir.y == -1 && grid_at(grid, (int)floorf(p.x), (int)p.y - 1) != 0) return 1;
-            else if (dir.y == 1 && grid_at(grid, (int)floorf(p.x), (int)p.y) != 0) return 1;
+            if (dir.x > 0 && grid_at(grid, (int)floorf(p.x), (int)p.y) != 0) return 1;
+            else if (dir.x < 0 && grid_at(grid, (int)floorf(p.x), (int)p.y) != 0) return 1;
         }
 
     }
     return 0;
 
-}
-
-void step_ray(Vector2 p1, Vector2 p2, Grid g)
-{
-    while(Vector2DistanceSqr(p1, p2) < MAX_DIST*MAX_DIST)
-    {
-        draw_line(p1, p2);
-        Vector2 p3 = cast_ray(p1, p2);
-        Vector2 eps = Vector2Subtract(p2, p1);
-        
-        eps.x /= fabsf(eps.x);
-        eps.y /= fabsf(eps.y);
-
-        if (check_collision(p3, eps, g)) {
-            draw_line(p2, p3);
-            draw_point(p3, RED);
-            break;
-        }
-            
-        p1 = p2;
-        p2 = Vector2Add(p3,Vector2Scale(eps, EPS));
-        draw_point(p3, RED);
-    }
 }
 
 
@@ -179,39 +157,44 @@ int main(void)
 
     InitWindow(WIDTH, HEIGHT, "Hello Raylib");
     SetTargetFPS(FPS); 
-    Vector2 plane = {0, 0.66};
-    Vector2 dir = {-1, 0};
-    Vector2 pos = {2, 3.141};
-    BeginDrawing();
+
+    // TODO: Fix bug where direction cannot be zero anymore
+    Vector2 dir = {-EPS * 100, EPS * 100};
+    Vector2 pos = {4, 5.6};
 
     while(!WindowShouldClose()) 
     {
+        Vector2 start = pos;
+        Vector2 eps = {.x = (dir.x / fabsf(dir.x)) * EPS, .y = (dir.y / fabsf(dir.y)) * EPS};
+        if (IsKeyPressed(KEY_D))
+        {
+            
+            float x = dir.x;
+            dir.x = -dir.y;
+            dir.y = x;
+        }
+
+        else if (IsKeyPressed(KEY_W))
+        {
+            pos = Vector2Add(pos, Vector2Scale(dir, 100));
+        
+        }
+
+        BeginDrawing();
             ClearBackground(BLACK);
             draw_grid(g);
-            draw_point(pos, RED);
-            //step_ray(pos, dir, g);
-            draw_line(pos, Vector2Add(pos, dir));
-            draw_point(Vector2Add(pos, dir), BLUE); 
-            draw_point(Vector2Add(Vector2Add(pos, plane), dir),BLUE);
-            draw_point(Vector2Add(dir, Vector2Subtract(pos, plane)),BLUE);
-
-            if (IsKeyPressed(KEY_D))
+            while(Vector2DistanceSqr(start, pos) < MAX_DIST*MAX_DIST)
             {
+                draw_point(start, RED);
+                Vector2 next = step_ray(start, Vector2Add(start, dir));
+                next = Vector2Add(next, eps);
+                draw_line(start, next);
+                draw_point(next, RED);
+                if (check_collision(next, dir, g)) break;
                 
-                float x = dir.x;
-
-                dir.x = -dir.y;
-                dir.y = x;
-
-                x = plane.x;
-                plane.x = -plane.y;
-                plane.y = x;
+                start = next;
             }
-            else if (IsKeyPressed(KEY_W))
-            {
-                pos = Vector2Add(pos, Vector2Scale(dir, 0.5));
-            
-            }
+
         EndDrawing();
     }
 
