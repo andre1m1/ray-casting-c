@@ -141,7 +141,7 @@ bool check_collision(Vector2 p, Vector2 dir, Grid grid)
 
 Vector2 get_plane(Vector2 dir)
 {
-    cos_45 = cos(PI/4.0f);
+    float cos_45 = cos(PI/4.0f);
     float x = cos_45 * dir.x - cos_45 * dir.y;
     float y = cos_45 * dir.x + cos_45 * dir.y;
     return (Vector2) {x, y};
