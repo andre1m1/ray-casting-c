@@ -10,8 +10,9 @@
 #define WIDTH      800
 #define HEIGHT     800
 #define RADIUS     10.0f
-#define EPS        1e-4
+#define EPS        1e-5
 #define MAX_DIST   10
+#define FOV        90.0f
 
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
 
@@ -115,7 +116,7 @@ Vector2 step_ray(Vector2 p1, Vector2 p2)
         if (p2.y > p1.y) dy = (Vector2){.x = p2.x, .y = ceil(p2.y)};
         else dy = (Vector2){.x = p2.x, .y = floorf(p2.x)};
     }
-    
+   
     if (Vector2DistanceSqr(p2, dx) < Vector2DistanceSqr(p2, dy)) return dx;
     return dy;
 
@@ -123,8 +124,7 @@ Vector2 step_ray(Vector2 p1, Vector2 p2)
 
 bool check_collision(Vector2 p, Vector2 dir, Grid grid)
 {
-
-    if (p.x < GRID_SIZE && p.y < GRID_SIZE) {
+    if (p.x < GRID_SIZE && p.y < GRID_SIZE && p.x > 0 && p.y > 0) {
         if (p.x == (int)p.x) {
             if (dir.y > 0 && grid_at(grid, (int)p.x - 1, (int)floorf(p.y)) != 0) return 1;
             else if (dir.y < 0 && grid_at(grid, (int)p.x, (int)floorf(p.y)) != 0) return 1;
@@ -133,7 +133,6 @@ bool check_collision(Vector2 p, Vector2 dir, Grid grid)
             if (dir.x > 0 && grid_at(grid, (int)floorf(p.x), (int)p.y) != 0) return 1;
             else if (dir.x < 0 && grid_at(grid, (int)floorf(p.x), (int)p.y) != 0) return 1;
         }
-
     }
     return 0;
 
@@ -160,6 +159,7 @@ int main(void)
     Grid g = {0};
     make_grid(&g, GRID_SIZE, GRID_SIZE); 
     grid_at(g, 2, 2) = 1;
+    grid_at(g, 3, 2) = 1;
     grid_at(g, 1, 2) = 1;
 
     for (int i = 0; i < g.rows; i++){ 
@@ -173,7 +173,7 @@ int main(void)
     InitWindow(WIDTH, HEIGHT, "Hello Raylib");
     SetTargetFPS(FPS); 
 
-    Vector2 dir = {-0.5, 0.5};
+    Vector2 dir = {-0.2, 0.2};
     Vector2 pos = {4, 5.6};
     float cos_30 = cos(PI/6.0f);
     float sin_30 = sin(PI/6.0f);
@@ -182,13 +182,6 @@ int main(void)
         // TODO: Fix bug where direction cannot be zero anymore
         if (dir.x == 0) dir.x += EPS;
         if (dir.y == 0) dir.y += EPS;
-
-
-        Vector2 fov_right = Vector2Add(pos, get_fov_right(dir));
-        Vector2 fov_left = Vector2Add(pos, get_fov_left(dir));
-        Vector2 start = pos;
-        Vector2 eps = {.x = (dir.x / fabsf(dir.x)) * EPS, .y = (dir.y / fabsf(dir.y)) * EPS};
-
 
         switch(GetKeyPressed()) {
             case KEY_W:
@@ -213,31 +206,40 @@ int main(void)
                 break;
             }
         }
+        Vector2 fov_right = Vector2Add(pos, get_fov_right(dir));
+        Vector2 fov_left = Vector2Add(pos, get_fov_left(dir));
+        Vector2 start = pos;
 
         BeginDrawing();
             ClearBackground(BLACK);
             draw_grid(g);
-            while(Vector2DistanceSqr(start, pos) < MAX_DIST*MAX_DIST)
-            {
+            for (float i = 0.0f; i <= FOV; i++) {
+                float l_x = Lerp(fov_left.x, fov_right.x, i/FOV);
+                float l_y = Lerp(fov_left.y, fov_right.y, i/FOV);
+                start = pos;
+                Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, start), 0.05f);
+                if (lerp_dir.x == 0 || lerp_dir.y == 0)
+                {   
+                    lerp_dir.x += EPS;
+                    lerp_dir.y += EPS;
+                }
+                Vector2 eps = {.x = (lerp_dir.x / fabsf(lerp_dir.x)) * EPS, .y = (lerp_dir.y / fabsf(lerp_dir.y)) * EPS};
                 draw_point(start, RED);
-                Vector2 next = step_ray(start, Vector2Add(start, dir));
-                next = Vector2Add(next, eps);
-                draw_line(start, next);
-                draw_point(next, RED);
-                if (check_collision(next, dir, g)) break;
-                
-                start = next;
+                while(Vector2DistanceSqr(start, pos) < MAX_DIST*MAX_DIST)
+                {
+                    Vector2 next = step_ray(start, Vector2Add(start, lerp_dir));
+                    next = Vector2Add(next, eps);
+                    draw_line(start, next);
+                    if (check_collision(next, start, g)) 
+                    {   
+                        draw_point(next, RED);
+                        break;
+                    }
+                    start = next;
+                }
             }
+            draw_line(fov_left, fov_right);
 
-            draw_point(fov_left, GREEN);
-            draw_point(fov_right, GREEN);
-            for (int i = 0; i <= 10; i++){
-                float l_x = Lerp(fov_left.x, fov_right.x, (float)(i / 10.0f));
-                float l_y = Lerp(fov_left.y, fov_right.y, (float)(i / 10.0f));
-                printf("lerp: x %f, y %f\n", l_x, l_y);
-                draw_point((Vector2){l_x, l_y}, BLUE);
-            }
-            printf("-----------------------------\n");
 
         EndDrawing();
     }
