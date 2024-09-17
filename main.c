@@ -12,7 +12,8 @@
 #define RADIUS     10.0f
 #define EPS        1e-5
 #define MAX_DIST   10
-#define FOV        90.0f
+#define FOV        180.0f
+
 
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
 
@@ -22,6 +23,13 @@ typedef struct {
     bool *items;
 
 } Grid;
+
+typedef struct {
+    Vector2 pos;
+    Vector2 dir;
+    Vector2 fov_left;
+    Vector2 fov_right;
+} Player;
 
 int make_grid(Grid* grid, int rows, int cols) {
     grid->rows = rows;
@@ -161,6 +169,9 @@ int main(void)
     grid_at(g, 2, 2) = 1;
     grid_at(g, 3, 2) = 1;
     grid_at(g, 1, 2) = 1;
+    grid_at(g, 1, 3) = 1;
+
+
 
     for (int i = 0; i < g.rows; i++){ 
         for (int j = 0; j < g.cols; j++) {
@@ -173,50 +184,54 @@ int main(void)
     InitWindow(WIDTH, HEIGHT, "Hello Raylib");
     SetTargetFPS(FPS); 
 
-    Vector2 dir = {-0.2, 0.2};
-    Vector2 pos = {4, 5.6};
     float cos_30 = cos(PI/6.0f);
     float sin_30 = sin(PI/6.0f);
+
+    Player player = {0};
+    player.pos = (Vector2){4, 5.6};  
+    player.dir = (Vector2){-0.2, 0.2};
+
+
     while(!WindowShouldClose()) 
     {
-        // TODO: Fix bug where direction cannot be zero anymore
-        if (dir.x == 0) dir.x += EPS;
-        if (dir.y == 0) dir.y += EPS;
+        // TODO: Fix bug where player.dir cannot be zero anymore
+        if (player.dir.x == 0) player.dir.x += EPS;
+        if (player.dir.y == 0) player.dir.y += EPS;
 
         switch(GetKeyPressed()) {
             case KEY_W:
-                pos = Vector2Add(pos, Vector2Scale(dir, 2));
+                player.pos = Vector2Add(player.pos, Vector2Scale(player.dir, 2));
                 break;
 
             case KEY_S:
-                pos = Vector2Subtract(pos, Vector2Scale(dir, 2));
+                player.pos = Vector2Subtract(player.pos, Vector2Scale(player.dir, 2));
                 break;
 
             case KEY_D: {
-                float x = dir.x;
-                dir.x = dir.x * cos_30 - dir.y * sin_30;
-                dir.y = x * sin_30 + dir.y * cos_30;
+                float x = player.dir.x;
+                player.dir.x = player.dir.x * cos_30 - player.dir.y * sin_30;
+                player.dir.y = x * sin_30 + player.dir.y * cos_30;
                 break;
             }
 
             case KEY_A: {
-                float x = dir.x;
-                dir.x = dir.x * cos_30 + dir.y * sin_30;
-                dir.y = x * -1 * sin_30 + dir.y * cos_30;
+                float x = player.dir.x;
+                player.dir.x = player.dir.x * cos_30 + player.dir.y * sin_30;
+                player.dir.y = x * -1 * sin_30 + player.dir.y * cos_30;
                 break;
             }
         }
-        Vector2 fov_right = Vector2Add(pos, get_fov_right(dir));
-        Vector2 fov_left = Vector2Add(pos, get_fov_left(dir));
-        Vector2 start = pos;
+        player.fov_right = Vector2Add(player.pos, get_fov_right(player.dir));
+        player.fov_left = Vector2Add(player.pos, get_fov_left(player.dir));
+        Vector2 start = player.pos;
 
         BeginDrawing();
             ClearBackground(BLACK);
             draw_grid(g);
             for (float i = 0.0f; i <= FOV; i++) {
-                float l_x = Lerp(fov_left.x, fov_right.x, i/FOV);
-                float l_y = Lerp(fov_left.y, fov_right.y, i/FOV);
-                start = pos;
+                float l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
+                float l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
+                start = player.pos;
                 Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, start), 0.05f);
                 if (lerp_dir.x == 0 || lerp_dir.y == 0)
                 {   
@@ -225,7 +240,7 @@ int main(void)
                 }
                 Vector2 eps = {.x = (lerp_dir.x / fabsf(lerp_dir.x)) * EPS, .y = (lerp_dir.y / fabsf(lerp_dir.y)) * EPS};
                 draw_point(start, RED);
-                while(Vector2DistanceSqr(start, pos) < MAX_DIST*MAX_DIST)
+                while(Vector2DistanceSqr(start, player.pos) < MAX_DIST*MAX_DIST)
                 {
                     Vector2 next = step_ray(start, Vector2Add(start, lerp_dir));
                     next = Vector2Add(next, eps);
@@ -238,7 +253,7 @@ int main(void)
                     start = next;
                 }
             }
-            draw_line(fov_left, fov_right);
+            draw_line(player.fov_left, player.fov_right);
 
 
         EndDrawing();
