@@ -139,7 +139,7 @@ bool check_collision(Vector2 p, Vector2 dir, Grid grid)
 
 }
 
-Vector2 get_plane(Vector2 dir)
+Vector2 get_fov_right(Vector2 dir)
 {
     float cos_45 = cos(PI/4.0f);
     float x = cos_45 * dir.x - cos_45 * dir.y;
@@ -147,6 +147,13 @@ Vector2 get_plane(Vector2 dir)
     return (Vector2) {x, y};
 }
 
+Vector2 get_fov_left(Vector2 dir)
+{
+    float cos_45 = cos(PI/4.0f);
+    float x = cos_45 * dir.x + cos_45 * dir.y;
+    float y = cos_45 * -1 * dir.x + cos_45 * dir.y;
+    return (Vector2) {x, y};
+}
 
 int main(void)
 {
@@ -166,7 +173,7 @@ int main(void)
     InitWindow(WIDTH, HEIGHT, "Hello Raylib");
     SetTargetFPS(FPS); 
 
-    Vector2 dir = {-0.1, 0.1};
+    Vector2 dir = {-0.5, 0.5};
     Vector2 pos = {4, 5.6};
     float cos_30 = cos(PI/6.0f);
     float sin_30 = sin(PI/6.0f);
@@ -177,8 +184,11 @@ int main(void)
         if (dir.y == 0) dir.y += EPS;
 
 
+        Vector2 fov_right = Vector2Add(pos, get_fov_right(dir));
+        Vector2 fov_left = Vector2Add(pos, get_fov_left(dir));
         Vector2 start = pos;
         Vector2 eps = {.x = (dir.x / fabsf(dir.x)) * EPS, .y = (dir.y / fabsf(dir.y)) * EPS};
+
 
         switch(GetKeyPressed()) {
             case KEY_W:
@@ -186,7 +196,7 @@ int main(void)
                 break;
 
             case KEY_S:
-                pos = Vector2Subtract(pos, Vector2Scale(dir, 100));
+                pos = Vector2Subtract(pos, Vector2Scale(dir, 2));
                 break;
 
             case KEY_D: {
@@ -218,6 +228,16 @@ int main(void)
                 
                 start = next;
             }
+
+            draw_point(fov_left, GREEN);
+            draw_point(fov_right, GREEN);
+            for (int i = 0; i <= 10; i++){
+                float l_x = Lerp(fov_left.x, fov_right.x, (float)(i / 10.0f));
+                float l_y = Lerp(fov_left.y, fov_right.y, (float)(i / 10.0f));
+                printf("lerp: x %f, y %f\n", l_x, l_y);
+                draw_point((Vector2){l_x, l_y}, BLUE);
+            }
+            printf("-----------------------------\n");
 
         EndDrawing();
     }
