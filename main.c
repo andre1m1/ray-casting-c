@@ -166,27 +166,42 @@ int main(void)
     InitWindow(WIDTH, HEIGHT, "Hello Raylib");
     SetTargetFPS(FPS); 
 
-    // TODO: Fix bug where direction cannot be zero anymore
-    Vector2 dir = {-EPS * 100, EPS * 100};
+    Vector2 dir = {-0.1, 0.1};
     Vector2 pos = {4, 5.6};
-    Vector2 plane = get_plane(dir);
-
+    float cos_30 = cos(PI/6.0f);
+    float sin_30 = sin(PI/6.0f);
     while(!WindowShouldClose()) 
     {
+        // TODO: Fix bug where direction cannot be zero anymore
+        if (dir.x == 0) dir.x += EPS;
+        if (dir.y == 0) dir.y += EPS;
+
+
         Vector2 start = pos;
         Vector2 eps = {.x = (dir.x / fabsf(dir.x)) * EPS, .y = (dir.y / fabsf(dir.y)) * EPS};
-        if (IsKeyPressed(KEY_D))
-        {
-            
-            float x = dir.x;
-            dir.x = -dir.y;
-            dir.y = x;
-        }
 
-        else if (IsKeyPressed(KEY_W))
-        {
-            pos = Vector2Add(pos, Vector2Scale(dir, 100));
-        
+        switch(GetKeyPressed()) {
+            case KEY_W:
+                pos = Vector2Add(pos, Vector2Scale(dir, 2));
+                break;
+
+            case KEY_S:
+                pos = Vector2Subtract(pos, Vector2Scale(dir, 100));
+                break;
+
+            case KEY_D: {
+                float x = dir.x;
+                dir.x = dir.x * cos_30 - dir.y * sin_30;
+                dir.y = x * sin_30 + dir.y * cos_30;
+                break;
+            }
+
+            case KEY_A: {
+                float x = dir.x;
+                dir.x = dir.x * cos_30 + dir.y * sin_30;
+                dir.y = x * -1 * sin_30 + dir.y * cos_30;
+                break;
+            }
         }
 
         BeginDrawing();
@@ -203,8 +218,6 @@ int main(void)
                 
                 start = next;
             }
-            draw_line(pos, Vector2Add(plane, Vector2Add(dir,pos)));
-            draw_line(pos, Vector2Subtract(Vector2Add(dir,pos), plane));
 
         EndDrawing();
     }
