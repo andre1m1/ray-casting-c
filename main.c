@@ -12,7 +12,7 @@
 #define RADIUS     10.0f
 #define EPS        1e-5
 #define MAX_DIST   10
-#define FOV        180.0f
+#define FOV        10.0f
 
 
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
@@ -31,6 +31,7 @@ typedef struct {
     Vector2 fov_right;
 } Player;
 
+
 int make_grid(Grid* grid, int rows, int cols) {
     grid->rows = rows;
     grid->cols = cols;
@@ -45,6 +46,7 @@ int make_grid(Grid* grid, int rows, int cols) {
     return 0;
 }
 
+// TODO: Stop enforcing grid to be square
 void draw_grid(Grid grid)
 {
     int cell_size = WIDTH / GRID_SIZE;
@@ -56,7 +58,7 @@ void draw_grid(Grid grid)
 
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++){
-            if (grid_at(grid, i, j) != 0) {
+            if (grid_at(grid, j, i) != 0) {
                 DrawRectangleV((Vector2){i*cell_size, j*cell_size}, (Vector2){cell_size, cell_size}, RAYWHITE);
             }
         }
@@ -68,6 +70,7 @@ void draw_grid(Grid grid)
 }
 
 // TODO: Stop using global constants
+// TODO: Refactor this functions / Completly get rid of them
 Vector2 world_to_grid(Vector2 point)
 {
     return (Vector2){ .x = point.x / WIDTH * GRID_SIZE, .y = point.y / HEIGHT * GRID_SIZE };
@@ -90,6 +93,8 @@ void draw_point(Vector2 p, Color color)
     Vector2 pw = grid_to_world(p);
     DrawCircleV(pw, RADIUS, color);
 }
+// TODO: Refactor this functions / Completly get rid of them
+
 
 Vector2 get_line_eq(Vector2 p1, Vector2 p2)
 {
@@ -130,16 +135,21 @@ Vector2 step_ray(Vector2 p1, Vector2 p2)
 
 }
 
+// TODO: Fix edge case where some rays don't collide properly
 bool check_collision(Vector2 p, Vector2 dir, Grid grid)
 {
     if (p.x < GRID_SIZE && p.y < GRID_SIZE && p.x > 0 && p.y > 0) {
+       // if (dir.x <= 0)
+       // {
+       //     if (dir.y <= 0 && grid_at(grid, (int)floorf(p.x), (int)floorf(p.y)-1) != 0) return 1; 
+       // }
         if (p.x == (int)p.x) {
-            if (dir.y > 0 && grid_at(grid, (int)p.x - 1, (int)floorf(p.y)) != 0) return 1;
-            else if (dir.y < 0 && grid_at(grid, (int)p.x, (int)floorf(p.y)) != 0) return 1;
+            if (dir.y > 0 && grid_at(grid, (int)p.y, (int)floorf(p.x)) != 0) return 1;
+            else if (dir.y < 0 && grid_at(grid, (int)p.y, (int)floorf(p.x)) != 0) return 1;
         }
         else {
-            if (dir.x > 0 && grid_at(grid, (int)floorf(p.x), (int)p.y) != 0) return 1;
-            else if (dir.x < 0 && grid_at(grid, (int)floorf(p.x), (int)p.y) != 0) return 1;
+            if (dir.x > 0 && grid_at(grid, (int)floorf(p.y), (int)p.x) != 0) return 1;
+            else if (dir.x < 0 && grid_at(grid, (int)floorf(p.y), (int)p.x) != 0) return 1;
         }
     }
     return 0;
@@ -170,8 +180,6 @@ int main(void)
     grid_at(g, 3, 2) = 1;
     grid_at(g, 1, 2) = 1;
     grid_at(g, 1, 3) = 1;
-
-
 
     for (int i = 0; i < g.rows; i++){ 
         for (int j = 0; j < g.cols; j++) {
@@ -224,7 +232,7 @@ int main(void)
         player.fov_right = Vector2Add(player.pos, get_fov_right(player.dir));
         player.fov_left = Vector2Add(player.pos, get_fov_left(player.dir));
         Vector2 start = player.pos;
-
+        // TODO: Refactor this where possible
         BeginDrawing();
             ClearBackground(BLACK);
             draw_grid(g);
@@ -243,16 +251,21 @@ int main(void)
                 while(Vector2DistanceSqr(start, player.pos) < MAX_DIST*MAX_DIST)
                 {
                     Vector2 next = step_ray(start, Vector2Add(start, lerp_dir));
-                    next = Vector2Add(next, eps);
                     draw_line(start, next);
                     if (check_collision(next, start, g)) 
                     {   
-                        draw_point(next, RED);
+                        if (!i) draw_point(next, BLUE);
+                        else draw_point(next, RED);
+                      //  printf("P%d, x: %f, y: %f dirx: %f, diry: %f\n", (int)i, next.x, next.y, lerp_dir.x, lerp_dir.y);
                         break;
                     }
+                    //printf("P%d, x: %f, y: %f dirx: %f, diry: %f\n", (int)i, next.x, next.y, lerp_dir.x, lerp_dir.y);
+                    next = Vector2Add(next, eps);
                     start = next;
                 }
+
             }
+           // printf("---------------------------------\n");
             draw_line(player.fov_left, player.fov_right);
 
 
