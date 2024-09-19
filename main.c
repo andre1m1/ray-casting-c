@@ -13,7 +13,7 @@
 #define RADIUS       5.0f
 #define EPS          1e-5
 #define MAX_DIST     10
-#define FOV          18.0f
+#define FOV          360.0f
 
 
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
@@ -199,7 +199,9 @@ void draw_minimap(Grid g, Player player)
             lerp_dir.x += EPS;
             lerp_dir.y += EPS;
         }
-        Vector2 coll_point = cast_ray(player.pos, lerp_dir, g);
+        cast_ray(player.pos, lerp_dir, g);
+        draw_point(Vector2Subtract(player.fov_left, player.dir), GREEN);
+        draw_point(Vector2Subtract(player.fov_right, player.dir), GREEN);
 
     }
     draw_line(player.fov_left, player.fov_right);
@@ -277,6 +279,31 @@ int main(void)
         BeginDrawing();
             ClearBackground(BLACK);
             draw_minimap(g, player);
+            for (double i = 0.0f; i < FOV; i++)
+            {
+                double l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
+                double l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
+                Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, player.pos), 0.005f);
+                if (lerp_dir.x == 0 || lerp_dir.y == 0)
+                {   
+                    lerp_dir.x += EPS;
+                    lerp_dir.y += EPS;
+                }
+                Vector2 coll_point = cast_ray(player.pos, lerp_dir, g);
+                double dist_to_player = Vector2Distance(player.pos, coll_point);
+
+                Vector2 camera_line = get_line_eq(player.fov_left, player.fov_right);
+                double dist_to_camera = fabs(camera_line.x*coll_point.x - coll_point.y + camera_line.y) / sqrtf(camera_line.x*camera_line.x + 1);
+
+                if (floorf(dist_to_player) < MAX_DIST) {
+                    double width = WIDTH / FOV;
+                    double height = HEIGHT / dist_to_camera;
+
+                    Vector2 position = {.x = width * i, .y = HEIGHT / 2 - height / 2};
+                    Vector2 size = {width, height};
+                    DrawRectangleV(position, size, RAYWHITE);
+                }
+            }
 
         EndDrawing();
     }
