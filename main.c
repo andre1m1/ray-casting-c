@@ -98,10 +98,10 @@ void draw_point(Vector2 p, Color color)
 
 Vector2 get_line_eq(Vector2 p1, Vector2 p2)
 {
-    float m = 0.0f;
+    double m = 0.0f;
     if (p1.x != p2.x) m = (p2.y - p1.y) / (p2.x - p1.x);
     
-    float n = p2.y - m * p2.x;
+    double n = p2.y - m * p2.x;
 
     return (Vector2){.x = m, .y = n};
 }
@@ -121,8 +121,8 @@ bool check_collision(Vector2 p, Grid grid)
 Vector2 step_ray(Vector2 p1, Vector2 p2)
 {   
     Vector2 line_eq = get_line_eq(p1, p2);
-    float m = line_eq.x;
-    float n = line_eq.y;
+    double m = line_eq.x;
+    double n = line_eq.y;
     
     Vector2 dx = {0};
     Vector2 dy = {0};
@@ -172,18 +172,18 @@ Vector2 cast_ray(Vector2 pos, Vector2 dir, Grid g)
 
 Vector2 get_fov_right(Vector2 dir)
 {
-    float cos_45 = cos(PI/4.0f);
-    float x = cos_45 * dir.x - cos_45 * dir.y;
-    float y = cos_45 * dir.x + cos_45 * dir.y;
+    double cos_45 = cos(PI/4.0f);
+    double x = cos_45 * dir.x - cos_45 * dir.y;
+    double y = cos_45 * dir.x + cos_45 * dir.y;
     return (Vector2) {x, y};
 }
 
 
 Vector2 get_fov_left(Vector2 dir)
 {
-    float cos_45 = cos(PI/4.0f);
-    float x = cos_45 * dir.x + cos_45 * dir.y;
-    float y = cos_45 * -1 * dir.x + cos_45 * dir.y;
+    double cos_45 = cos(PI/4.0f);
+    double x = cos_45 * dir.x + cos_45 * dir.y;
+    double y = cos_45 * -1 * dir.x + cos_45 * dir.y;
     return (Vector2) {x, y};
 }
 
@@ -214,8 +214,8 @@ int main(void)
     InitWindow(WIDTH, HEIGHT, "Hello Raylib");
     SetTargetFPS(FPS); 
 
-    float cos_30 = cos(PI/6.0f);
-    float sin_30 = sin(PI/6.0f);
+    double cos_30 = cos(PI/6.0f);
+    double sin_30 = sin(PI/6.0f);
 
     Player player = {0};
     player.pos = (Vector2){4, 5.6};  
@@ -238,14 +238,14 @@ int main(void)
                 break;
 
             case KEY_D: {
-                float x = player.dir.x;
+                double x = player.dir.x;
                 player.dir.x = player.dir.x * cos_30 - player.dir.y * sin_30;
                 player.dir.y = x * sin_30 + player.dir.y * cos_30;
                 break;
             }
 
             case KEY_A: {
-                float x = player.dir.x;
+                double x = player.dir.x;
                 player.dir.x = player.dir.x * cos_30 + player.dir.y * sin_30;
                 player.dir.y = x * -1 * sin_30 + player.dir.y * cos_30;
                 break;
@@ -258,9 +258,9 @@ int main(void)
         BeginDrawing();
             ClearBackground(BLACK);
             draw_grid(g);
-            for (float i = 0.0f; i <= FOV; i++) {
-                float l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
-                float l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
+            for (double i = 0.0f; i <= FOV; i++) {
+                double l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
+                double l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
                 Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, player.pos), 0.005f);
                 if (lerp_dir.x == 0 || lerp_dir.y == 0)
                 {   
