@@ -8,8 +8,8 @@
 #define GRID_SIZE    8
 #define MINIMAP_SIZE 4 
 #define FPS          60
-#define WIDTH        1000
-#define HEIGHT       1000
+#define WIDTH        1280 * 1.5
+#define HEIGHT       720 * 1.5 
 #define RADIUS       5.0f
 #define EPS          1e-5
 #define MAX_DIST     10
@@ -50,7 +50,8 @@ int make_grid(Grid* grid, int rows, int cols) {
 // TODO: Stop enforcing grid to be square
 void draw_grid(Grid grid)
 {
-    int cell_size = WIDTH / GRID_SIZE / MINIMAP_SIZE;
+    int cell_width = WIDTH / GRID_SIZE / MINIMAP_SIZE;
+    int cell_height = HEIGHT / GRID_SIZE / MINIMAP_SIZE;
        
     DrawLineV((Vector2){.x = 0, .y = 1}, (Vector2){.x = WIDTH/MINIMAP_SIZE, .y = 1}, RAYWHITE);
     DrawLineV((Vector2){.x = 1, .y = 0}, (Vector2){.x = 1, .y = HEIGHT/MINIMAP_SIZE}, RAYWHITE);
@@ -60,12 +61,12 @@ void draw_grid(Grid grid)
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++){
             if (grid_at(grid, i, j) != 0) {
-                DrawRectangleV((Vector2){j*cell_size, i*cell_size}, (Vector2){cell_size, cell_size}, RAYWHITE);
+                DrawRectangleV((Vector2){j*cell_width, i*cell_height}, (Vector2){cell_width, cell_height}, RAYWHITE);
             }
         }
 
-        DrawLineV((Vector2){.x = i*cell_size, .y = 0}, (Vector2){.x = i*cell_size, .y = HEIGHT/MINIMAP_SIZE},  RAYWHITE);
-        DrawLineV((Vector2){.x = 0, .y = i*cell_size}, (Vector2){.x = WIDTH/MINIMAP_SIZE, .y = i*cell_size}, RAYWHITE);
+        DrawLineV((Vector2){.x = i*cell_width, .y = 0}, (Vector2){.x = i*cell_width, .y = HEIGHT/MINIMAP_SIZE},  RAYWHITE);
+        DrawLineV((Vector2){.x = 0, .y = i*cell_height}, (Vector2){.x = WIDTH/MINIMAP_SIZE, .y = i*cell_height}, RAYWHITE);
     }
 
 }
@@ -155,7 +156,6 @@ Vector2 cast_ray(Vector2 pos, Vector2 dir, Grid g)
     while(Vector2DistanceSqr(start, pos) < MAX_DIST*MAX_DIST)
     {
         Vector2 next = step_ray(start, Vector2Add(start, dir));
-        draw_line(start, next);
         next = Vector2Add(next, eps);//Very important for collision checking apparently.
 
         if (check_collision(next, g)) 
@@ -200,11 +200,11 @@ void draw_minimap(Grid g, Player player)
             lerp_dir.y += EPS;
         }
         cast_ray(player.pos, lerp_dir, g);
-        draw_point(Vector2Subtract(player.fov_left, player.dir), GREEN);
-        draw_point(Vector2Subtract(player.fov_right, player.dir), GREEN);
+        draw_line(player.fov_left, player.fov_right);
+        //draw_point(Vector2Subtract(player.fov_left, player.dir), GREEN);
+        //draw_point(Vector2Subtract(player.fov_right, player.dir), GREEN);
 
     }
-    draw_line(player.fov_left, player.fov_right);
     draw_point(player.pos, BLUE);
 }
 
@@ -223,6 +223,7 @@ int main(void)
     grid_at(g, 1, 3) = 1;
     grid_at(g, 1, 4) = 1;
     grid_at(g, 2, 4) = 1;
+    grid_at(g, 5, 4) = 1;
 
     for (int i = 0; i < g.rows; i++){ 
         for (int j = 0; j < g.cols; j++) {
@@ -239,8 +240,8 @@ int main(void)
     double sin_30 = sin(PI/6.0f);
 
     Player player = {0};
-    player.pos = (Vector2){4, 5.6};  
-    player.dir = (Vector2){-0.2, 0.2};
+    player.pos = (Vector2){0, 0};  
+    player.dir = (Vector2){-0.1, 0.1};
 
 
     while(!WindowShouldClose()) 
