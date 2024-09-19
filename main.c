@@ -5,14 +5,15 @@
 #include "raylib/raylib.h"
 #include "raylib/raymath.h"
 
-#define GRID_SIZE  8
-#define FPS        60
-#define WIDTH      800
-#define HEIGHT     800
-#define RADIUS     10.0f
-#define EPS        1e-5
-#define MAX_DIST   10
-#define FOV        180.0f
+#define GRID_SIZE    8
+#define MINIMAP_SIZE 4 
+#define FPS          60
+#define WIDTH        1000
+#define HEIGHT       1000
+#define RADIUS       5.0f
+#define EPS          1e-5
+#define MAX_DIST     10
+#define FOV          18.0f
 
 
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
@@ -49,12 +50,12 @@ int make_grid(Grid* grid, int rows, int cols) {
 // TODO: Stop enforcing grid to be square
 void draw_grid(Grid grid)
 {
-    int cell_size = WIDTH / GRID_SIZE;
+    int cell_size = WIDTH / GRID_SIZE / MINIMAP_SIZE;
        
-    DrawLineV((Vector2){.x = 0, .y = 1}, (Vector2){.x = WIDTH, .y = 1}, RAYWHITE);
-    DrawLineV((Vector2){.x = 1, .y = 0}, (Vector2){.x = 1, .y = HEIGHT}, RAYWHITE);
-    DrawLineV((Vector2){.x = WIDTH, .y = 0}, (Vector2){.x = WIDTH, .y = HEIGHT}, RAYWHITE);
-    DrawLineV((Vector2){.x = 0, .y = HEIGHT}, (Vector2){.x = WIDTH, .y = HEIGHT}, RAYWHITE);
+    DrawLineV((Vector2){.x = 0, .y = 1}, (Vector2){.x = WIDTH/MINIMAP_SIZE, .y = 1}, RAYWHITE);
+    DrawLineV((Vector2){.x = 1, .y = 0}, (Vector2){.x = 1, .y = HEIGHT/MINIMAP_SIZE}, RAYWHITE);
+    DrawLineV((Vector2){.x = WIDTH/MINIMAP_SIZE, .y = 0}, (Vector2){.x = WIDTH/MINIMAP_SIZE, .y = HEIGHT/MINIMAP_SIZE}, RAYWHITE);
+    DrawLineV((Vector2){.x = 0, .y = HEIGHT/MINIMAP_SIZE}, (Vector2){.x = WIDTH/MINIMAP_SIZE, .y = HEIGHT/MINIMAP_SIZE}, RAYWHITE);
 
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++){
@@ -63,8 +64,8 @@ void draw_grid(Grid grid)
             }
         }
 
-        DrawLineV((Vector2){.x = i*cell_size, .y = 0}, (Vector2){.x = i*cell_size, .y = HEIGHT},  RAYWHITE);
-        DrawLineV((Vector2){.x = 0, .y = i*cell_size}, (Vector2){.x = WIDTH, .y = i*cell_size}, RAYWHITE);
+        DrawLineV((Vector2){.x = i*cell_size, .y = 0}, (Vector2){.x = i*cell_size, .y = HEIGHT/MINIMAP_SIZE},  RAYWHITE);
+        DrawLineV((Vector2){.x = 0, .y = i*cell_size}, (Vector2){.x = WIDTH/MINIMAP_SIZE, .y = i*cell_size}, RAYWHITE);
     }
 
 }
@@ -78,7 +79,7 @@ Vector2 world_to_grid(Vector2 point)
 
 Vector2 grid_to_world(Vector2 point)
 {
-    return (Vector2){ .x = point.x * WIDTH / GRID_SIZE, .y = point.y * HEIGHT / GRID_SIZE };
+    return (Vector2){ .x = point.x * WIDTH / GRID_SIZE / MINIMAP_SIZE, .y = point.y * HEIGHT / GRID_SIZE / MINIMAP_SIZE };
 }
 
 void draw_line(Vector2 p1, Vector2 p2)
@@ -159,7 +160,6 @@ Vector2 cast_ray(Vector2 pos, Vector2 dir, Grid g)
 
         if (check_collision(next, g)) 
         {   
-            draw_point(next, RED);
             start = next;
             break;
         }
@@ -185,6 +185,25 @@ Vector2 get_fov_left(Vector2 dir)
     double x = cos_45 * dir.x + cos_45 * dir.y;
     double y = cos_45 * -1 * dir.x + cos_45 * dir.y;
     return (Vector2) {x, y};
+}
+
+void draw_minimap(Grid g, Player player)
+{
+    draw_grid(g);
+    for (double i = 0.0f; i <= FOV; i++) {
+        double l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
+        double l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
+        Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, player.pos), 0.005f);
+        if (lerp_dir.x == 0 || lerp_dir.y == 0)
+        {   
+            lerp_dir.x += EPS;
+            lerp_dir.y += EPS;
+        }
+        Vector2 coll_point = cast_ray(player.pos, lerp_dir, g);
+
+    }
+    draw_line(player.fov_left, player.fov_right);
+    draw_point(player.pos, BLUE);
 }
 
 
@@ -257,22 +276,7 @@ int main(void)
         // TODO: Refactor this where possible
         BeginDrawing();
             ClearBackground(BLACK);
-            draw_grid(g);
-            for (double i = 0.0f; i <= FOV; i++) {
-                double l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
-                double l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
-                Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, player.pos), 0.005f);
-                if (lerp_dir.x == 0 || lerp_dir.y == 0)
-                {   
-                    lerp_dir.x += EPS;
-                    lerp_dir.y += EPS;
-                }
-                Vector2 coll_point = cast_ray(player.pos, lerp_dir, g);
-                draw_point(coll_point, RED);
-
-            }
-            draw_line(player.fov_left, player.fov_right);
-            draw_point(player.pos, BLUE);
+            draw_minimap(g, player);
 
         EndDrawing();
     }
