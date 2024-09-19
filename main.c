@@ -12,7 +12,7 @@
 #define RADIUS     10.0f
 #define EPS        1e-5
 #define MAX_DIST   10
-#define FOV        10.0f
+#define FOV        180.0f
 
 
 #define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
@@ -106,6 +106,17 @@ Vector2 get_line_eq(Vector2 p1, Vector2 p2)
     return (Vector2){.x = m, .y = n};
 }
 
+// TODO: Fix edge case where some rays don't collide properly
+bool check_collision(Vector2 p, Grid grid)
+{
+     if (p.x < GRID_SIZE && p.y < GRID_SIZE && p.x > 0 && p.y > 0){
+        if (grid_at(grid, (int)floorf(p.y), (int)p.x) != 0) return 1;
+     }
+    return 0;
+
+}
+
+
 // TODO: Refactor the way collisions are computed
 Vector2 step_ray(Vector2 p1, Vector2 p2)
 {   
@@ -135,14 +146,28 @@ Vector2 step_ray(Vector2 p1, Vector2 p2)
 
 }
 
-// TODO: Fix edge case where some rays don't collide properly
-bool check_collision(Vector2 p, Vector2 dir, Grid grid)
+Vector2 cast_ray(Vector2 pos, Vector2 dir, Grid g)
 {
-     if (p.x < GRID_SIZE && p.y < GRID_SIZE && p.x > 0 && p.y > 0) 
-        if (grid_at(grid, (int)floorf(p.y), (int)p.x) != 0) return 1;
-    return 0;
+    Vector2 start = pos;
 
+    Vector2 eps = {.x = (dir.x / fabsf(dir.x)) * EPS, .y = (dir.y / fabsf(dir.y)) * EPS};
+    while(Vector2DistanceSqr(start, pos) < MAX_DIST*MAX_DIST)
+    {
+        Vector2 next = step_ray(start, Vector2Add(start, dir));
+        draw_line(start, next);
+        next = Vector2Add(next, eps);//Very important for collision checking apparently.
+
+        if (check_collision(next, g)) 
+        {   
+            draw_point(next, RED);
+            start = next;
+            break;
+        }
+        start = next;
+    }
+    return start;
 }
+
 
 
 Vector2 get_fov_right(Vector2 dir)
@@ -166,11 +191,17 @@ Vector2 get_fov_left(Vector2 dir)
 int main(void)
 {
     Grid g = {0};
-    make_grid(&g, GRID_SIZE, GRID_SIZE); 
+    if(make_grid(&g, GRID_SIZE, GRID_SIZE) != 0)
+    {
+        printf("[ERROR] Could not allocate memory for grid!\n");
+        exit(1);
+    }
     grid_at(g, 2, 2) = 1;
     grid_at(g, 3, 2) = 1;
     grid_at(g, 1, 2) = 1;
     grid_at(g, 1, 3) = 1;
+    grid_at(g, 1, 4) = 1;
+    grid_at(g, 2, 4) = 1;
 
     for (int i = 0; i < g.rows; i++){ 
         for (int j = 0; j < g.cols; j++) {
@@ -222,7 +253,7 @@ int main(void)
         }
         player.fov_right = Vector2Add(player.pos, get_fov_right(player.dir));
         player.fov_left = Vector2Add(player.pos, get_fov_left(player.dir));
-        Vector2 start = player.pos;
+
         // TODO: Refactor this where possible
         BeginDrawing();
             ClearBackground(BLACK);
@@ -230,32 +261,18 @@ int main(void)
             for (float i = 0.0f; i <= FOV; i++) {
                 float l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
                 float l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
-                start = player.pos;
-                Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, start), 0.05f);
+                Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, player.pos), 0.005f);
                 if (lerp_dir.x == 0 || lerp_dir.y == 0)
                 {   
                     lerp_dir.x += EPS;
                     lerp_dir.y += EPS;
                 }
-                Vector2 eps = {.x = (lerp_dir.x / fabsf(lerp_dir.x)) * EPS, .y = (lerp_dir.y / fabsf(lerp_dir.y)) * EPS};
-                draw_point(start, RED);
-                while(Vector2DistanceSqr(start, player.pos) < MAX_DIST*MAX_DIST)
-                {
-                    Vector2 next = step_ray(start, Vector2Add(start, lerp_dir));
-                    draw_line(start, next);
-                    next = Vector2Add(next, eps);//Very important for collision checking apparently.
-
-                    if (check_collision(next, lerp_dir, g)) 
-                    {   
-                        draw_point(next, RED);
-                        break;
-                    }
-                    start = next;
-                }
+                Vector2 coll_point = cast_ray(player.pos, lerp_dir, g);
+                draw_point(coll_point, RED);
 
             }
             draw_line(player.fov_left, player.fov_right);
-
+            draw_point(player.pos, BLUE);
 
         EndDrawing();
     }
