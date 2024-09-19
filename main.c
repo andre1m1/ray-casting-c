@@ -58,8 +58,8 @@ void draw_grid(Grid grid)
 
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++){
-            if (grid_at(grid, j, i) != 0) {
-                DrawRectangleV((Vector2){i*cell_size, j*cell_size}, (Vector2){cell_size, cell_size}, RAYWHITE);
+            if (grid_at(grid, i, j) != 0) {
+                DrawRectangleV((Vector2){j*cell_size, i*cell_size}, (Vector2){cell_size, cell_size}, RAYWHITE);
             }
         }
 
@@ -138,23 +138,12 @@ Vector2 step_ray(Vector2 p1, Vector2 p2)
 // TODO: Fix edge case where some rays don't collide properly
 bool check_collision(Vector2 p, Vector2 dir, Grid grid)
 {
-    if (p.x < GRID_SIZE && p.y < GRID_SIZE && p.x > 0 && p.y > 0) {
-       // if (dir.x <= 0)
-       // {
-       //     if (dir.y <= 0 && grid_at(grid, (int)floorf(p.x), (int)floorf(p.y)-1) != 0) return 1; 
-       // }
-        if (p.x == (int)p.x) {
-            if (dir.y > 0 && grid_at(grid, (int)p.y, (int)floorf(p.x)) != 0) return 1;
-            else if (dir.y < 0 && grid_at(grid, (int)p.y, (int)floorf(p.x)) != 0) return 1;
-        }
-        else {
-            if (dir.x > 0 && grid_at(grid, (int)floorf(p.y), (int)p.x) != 0) return 1;
-            else if (dir.x < 0 && grid_at(grid, (int)floorf(p.y), (int)p.x) != 0) return 1;
-        }
-    }
+     if (p.x < GRID_SIZE && p.y < GRID_SIZE && p.x > 0 && p.y > 0) 
+        if (grid_at(grid, (int)floorf(p.y), (int)p.x) != 0) return 1;
     return 0;
 
 }
+
 
 Vector2 get_fov_right(Vector2 dir)
 {
@@ -164,6 +153,7 @@ Vector2 get_fov_right(Vector2 dir)
     return (Vector2) {x, y};
 }
 
+
 Vector2 get_fov_left(Vector2 dir)
 {
     float cos_45 = cos(PI/4.0f);
@@ -171,6 +161,7 @@ Vector2 get_fov_left(Vector2 dir)
     float y = cos_45 * -1 * dir.x + cos_45 * dir.y;
     return (Vector2) {x, y};
 }
+
 
 int main(void)
 {
@@ -252,20 +243,17 @@ int main(void)
                 {
                     Vector2 next = step_ray(start, Vector2Add(start, lerp_dir));
                     draw_line(start, next);
-                    if (check_collision(next, start, g)) 
+                    next = Vector2Add(next, eps);//Very important for collision checking apparently.
+
+                    if (check_collision(next, lerp_dir, g)) 
                     {   
-                        if (!i) draw_point(next, BLUE);
-                        else draw_point(next, RED);
-                      //  printf("P%d, x: %f, y: %f dirx: %f, diry: %f\n", (int)i, next.x, next.y, lerp_dir.x, lerp_dir.y);
+                        draw_point(next, RED);
                         break;
                     }
-                    //printf("P%d, x: %f, y: %f dirx: %f, diry: %f\n", (int)i, next.x, next.y, lerp_dir.x, lerp_dir.y);
-                    next = Vector2Add(next, eps);
                     start = next;
                 }
 
             }
-           // printf("---------------------------------\n");
             draw_line(player.fov_left, player.fov_right);
 
 
