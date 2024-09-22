@@ -2,8 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#include "raylib/raylib.h"
-#include "raylib/raymath.h"
+#include "raylib.h"
+#include "raymath.h"
 
 #define GRID_SIZE   10 
 #define MINIMAP_SIZE 3 
@@ -177,7 +177,6 @@ Vector2 cast_ray(Vector2 p1, Vector2 p2, Grid g)
     {
         Vector2 next = step_ray(start, p2);
         next = Vector2Add(next, eps);//Very important for collision checking apparently.
-        draw_line(start, next);
         start = p2;
         p2 = next;
 
@@ -297,7 +296,6 @@ int main(void)
         // TODO: Refactor this where possible
         BeginDrawing();
             ClearBackground(BLACK);
-            draw_minimap(g, player);
             for (double i = 0.0f; i <= FOV; i++)
             {
                 double l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
@@ -323,6 +321,7 @@ int main(void)
                     DrawRectangleV(position, size, color);
                 }
             }
+            draw_minimap(g, player);
 
         EndDrawing();
     }
