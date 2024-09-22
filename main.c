@@ -5,23 +5,24 @@
 #include "raylib/raylib.h"
 #include "raylib/raymath.h"
 
-#define GRID_SIZE    8
-#define MINIMAP_SIZE 4 
+#define GRID_SIZE   10 
+#define MINIMAP_SIZE 3 
+
 #define FPS          60
 #define WIDTH        1280 * 1.5
 #define HEIGHT       720 * 1.5 
-#define RADIUS       5.0f
-#define EPS          1e-5
+#define RADIUS       10.0f
+#define EPS          1e-6
 #define MAX_DIST     10
 #define FOV          360.0f
 
 
-#define grid_at(grid, i, j) grid.items[i*grid.cols+j] 
+#define grid_at(grid, i, j) grid.items[(int)i*grid.cols+(int)j] 
 
 typedef struct {
     int rows;
     int cols;
-    bool *items;
+    int *items;
 
 } Grid;
 
@@ -36,13 +37,13 @@ typedef struct {
 int make_grid(Grid* grid, int rows, int cols) {
     grid->rows = rows;
     grid->cols = cols;
-    grid->items = malloc(sizeof(bool)*rows*cols);
+    grid->items = malloc(sizeof(int)*rows*cols);
     
     if (grid->items == NULL) {
         return -1;
     }
 
-    memset(grid->items, 0, sizeof(bool)*rows*cols);
+    memset(grid->items, 0, sizeof(int)*rows*cols);
 
     return 0;
 }
@@ -118,52 +119,72 @@ bool check_collision(Vector2 p, Grid grid)
 
 }
 
-
-// TODO: Refactor the way collisions are computed
-Vector2 step_ray(Vector2 p1, Vector2 p2)
-{   
-    Vector2 line_eq = get_line_eq(p1, p2);
-    double m = line_eq.x;
-    double n = line_eq.y;
-    
-    Vector2 dx = {0};
-    Vector2 dy = {0};
-
-    // Find closest X axis collision
-    if (m) {
-        if (p2.y > p1.y) dx = (Vector2){.x = (ceil(p2.y) - n) / m, .y = ceil(p2.y)};
-        else dx = (Vector2){.x = (floorf(p2.y) - n) / m, .y = floorf(p2.y)};
-    } else dx = (Vector2){.x = 0, .y = n};
-
-    // Find Y axis collision
-    if (p2.x > p1.x) dy = (Vector2){.x = ceil(p2.x), .y = m * ceil(p2.x) + n};
-    else if (p2.x < p1.x) dy = (Vector2){.x = floorf(p2.x), .y = m * floorf(p2.x) + n};
-    else {
-        if (p2.y > p1.y) dy = (Vector2){.x = p2.x, .y = ceil(p2.y)};
-        else dy = (Vector2){.x = p2.x, .y = floorf(p2.x)};
-    }
-   
-    if (Vector2DistanceSqr(p2, dx) < Vector2DistanceSqr(p2, dy)) return dx;
-    return dy;
-
+double snap(double x, double dx)
+{
+    if (dx > 0) return ceil(x + EPS);
+    if (dx < 0) return floorf(x - EPS);
+    return x;
 }
 
-Vector2 cast_ray(Vector2 pos, Vector2 dir, Grid g)
-{
-    Vector2 start = pos;
-
-    Vector2 eps = {.x = (dir.x / fabsf(dir.x)) * EPS, .y = (dir.y / fabsf(dir.y)) * EPS};
-    while(Vector2DistanceSqr(start, pos) < MAX_DIST*MAX_DIST)
+Vector2 step_ray(Vector2 p1, Vector2 p2)
+{   
+    float dx = p2.x - p1.x;
+    float dy = p2.y - p1.y;
+    Vector2 p3 = p2;
+    if (dx != 0)
     {
-        Vector2 next = step_ray(start, Vector2Add(start, dir));
+        double m = dy / dx;
+        double n = p2.y - m*p2.x;
+
+        double x3 = snap(p2.x, dx);
+        double y3 = m * x3 + n;
+        p3 = (Vector2){x3, y3};
+
+        if (m != 0)
+        {
+            y3 = snap(p2.y, dy);
+            x3 = (y3-n)/m;
+            Vector2 p3y = {x3, y3};
+            if (Vector2DistanceSqr(p2, p3y) < Vector2DistanceSqr(p2, p3)) p3 = p3y;
+        }
+
+    }
+    else {
+        double y3 = snap(p2.y, dy);
+        double x3 = p2.x;
+        p3 = (Vector2){x3, y3};
+    }
+
+    return p3;
+}
+
+float sign_of(double x)
+{
+    if (x < 0) return -1;
+    if (x > 0) return 1;
+    return 0;
+}
+
+Vector2 cast_ray(Vector2 p1, Vector2 p2, Grid g)
+{
+    Vector2 start = p1;
+   
+
+    float dx = p2.x - p1.x;
+    float dy = p2.y - p1.y;
+    Vector2 eps = {.x = sign_of(dx) * EPS, .y = sign_of(dy) * EPS};
+    while(Vector2DistanceSqr(start, p1) < MAX_DIST*MAX_DIST)
+    {
+        Vector2 next = step_ray(start, p2);
         next = Vector2Add(next, eps);//Very important for collision checking apparently.
+        draw_line(start, next);
+        start = p2;
+        p2 = next;
 
         if (check_collision(next, g)) 
         {   
-            start = next;
-            break;
+            return next;
         }
-        start = next;
     }
     return start;
 }
@@ -187,22 +208,17 @@ Vector2 get_fov_left(Vector2 dir)
     return (Vector2) {x, y};
 }
 
+
 void draw_minimap(Grid g, Player player)
 {
     draw_grid(g);
     for (double i = 0.0f; i <= FOV; i++) {
         double l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
         double l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
-        Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, player.pos), 0.005f);
-        if (lerp_dir.x == 0 || lerp_dir.y == 0)
-        {   
-            lerp_dir.x += EPS;
-            lerp_dir.y += EPS;
-        }
+        
+        Vector2 lerp_dir = (Vector2){l_x, l_y};
         cast_ray(player.pos, lerp_dir, g);
         draw_line(player.fov_left, player.fov_right);
-        //draw_point(Vector2Subtract(player.fov_left, player.dir), GREEN);
-        //draw_point(Vector2Subtract(player.fov_right, player.dir), GREEN);
 
     }
     draw_point(player.pos, BLUE);
@@ -222,8 +238,8 @@ int main(void)
     grid_at(g, 1, 2) = 1;
     grid_at(g, 1, 3) = 1;
     grid_at(g, 1, 4) = 1;
-    grid_at(g, 2, 4) = 1;
-    grid_at(g, 5, 4) = 1;
+    grid_at(g, 2, 4) = 2;
+    grid_at(g, 5, 4) = 2;
 
     for (int i = 0; i < g.rows; i++){ 
         for (int j = 0; j < g.cols; j++) {
@@ -240,23 +256,26 @@ int main(void)
     double sin_30 = sin(PI/6.0f);
 
     Player player = {0};
-    player.pos = (Vector2){0, 0};  
-    player.dir = (Vector2){-0.1, 0.1};
+    player.pos = (Vector2){2.830127, 7.830127};  
+    player.dir = (Vector2){0.1, -0.1};
 
 
     while(!WindowShouldClose()) 
     {
-        // TODO: Fix bug where player.dir cannot be zero anymore
-        if (player.dir.x == 0) player.dir.x += EPS;
-        if (player.dir.y == 0) player.dir.y += EPS;
+        //NOTE: If things break again it might be a good idea to bring this back
+   //     if (player.dir.x == 0 || player.dir.y == 0) 
+   //     {
+   //         player.dir.x += EPS;
+   //         player.dir.y += EPS;
+   //     }
 
         switch(GetKeyPressed()) {
             case KEY_W:
-                player.pos = Vector2Add(player.pos, Vector2Scale(player.dir, 2));
+                player.pos = Vector2Add(player.pos, Vector2Scale(player.dir, 10));
                 break;
 
             case KEY_S:
-                player.pos = Vector2Subtract(player.pos, Vector2Scale(player.dir, 2));
+                player.pos = Vector2Subtract(player.pos, Vector2Scale(player.dir, 10));
                 break;
 
             case KEY_D: {
@@ -275,34 +294,33 @@ int main(void)
         }
         player.fov_right = Vector2Add(player.pos, get_fov_right(player.dir));
         player.fov_left = Vector2Add(player.pos, get_fov_left(player.dir));
-
         // TODO: Refactor this where possible
         BeginDrawing();
             ClearBackground(BLACK);
             draw_minimap(g, player);
-            for (double i = 0.0f; i < FOV; i++)
+            for (double i = 0.0f; i <= FOV; i++)
             {
                 double l_x = Lerp(player.fov_left.x, player.fov_right.x, i/FOV);
                 double l_y = Lerp(player.fov_left.y, player.fov_right.y, i/FOV);
-                Vector2 lerp_dir = Vector2Scale(Vector2Subtract((Vector2){l_x, l_y}, player.pos), 0.005f);
-                if (lerp_dir.x == 0 || lerp_dir.y == 0)
-                {   
-                    lerp_dir.x += EPS;
-                    lerp_dir.y += EPS;
-                }
-                Vector2 coll_point = cast_ray(player.pos, lerp_dir, g);
+                Vector2 lerp_point= (Vector2){l_x, l_y};
+
+                Vector2 coll_point = cast_ray(player.pos, lerp_point, g);
                 double dist_to_player = Vector2Distance(player.pos, coll_point);
 
                 Vector2 camera_line = get_line_eq(player.fov_left, player.fov_right);
                 double dist_to_camera = fabs(camera_line.x*coll_point.x - coll_point.y + camera_line.y) / sqrtf(camera_line.x*camera_line.x + 1);
 
                 if (floorf(dist_to_player) < MAX_DIST) {
+                    Color color = RAYWHITE;
+                    if (grid_at(g, floorf(coll_point.y), floorf(coll_point.x)) == 1) color = RED;
+                    if (grid_at(g, floorf(coll_point.y), floorf(coll_point.x)) == 2) color = BLUE;
+
                     double width = WIDTH / FOV;
                     double height = HEIGHT / dist_to_camera;
 
                     Vector2 position = {.x = width * i, .y = HEIGHT / 2 - height / 2};
                     Vector2 size = {width, height};
-                    DrawRectangleV(position, size, RAYWHITE);
+                    DrawRectangleV(position, size, color);
                 }
             }
 
