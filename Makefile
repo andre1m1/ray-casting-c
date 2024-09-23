@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -std=c11 -O3  
+CFLAGS = -Wall -Wextra -std=c11 -O3 -pedantic 
 LINUX_LIBS = ./raylib/raylib-linux/libraylib.a -lm
 WINDOWS_LIBS = -L./raylib/raylib-windows/lib -lraylib -lwinmm -lm -lopengl32 -lgdi32 -static  
 
